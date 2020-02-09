@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+    <meta charset="UTF-8">
+    <script>
+      function simpleFib(n) {
+          let i, t, a = 0, b = 1;
+          for (i = 0; i < n; i++) {
+              t = a + b; a = b; b = t;
+          }
+          return b;
+      }
+
+      function timer(name, fn, input) {
+          console.time(`timer ${name}`);
+          let result = fn(input);
+          console.timeEnd(`timer ${name}`);
+      }
+
+      let wasmBrowserInstantiate = async (wasmModuleUrl, importObject) => {
+let response = undefined;
+
+if (!importObject) {
+importObject = {
+env: {
+  abort: () => console.log("Abort!")
+}
+};
+}
+
+// Check if the browser supports streaming instantiation
+if (WebAssembly.instantiateStreaming) {
+// Fetch the module, and instantiate it as it is downloading
+response = await WebAssembly.instantiateStreaming(
+fetch(wasmModuleUrl),
+importObject
+);
+} else {
+// Fallback to using fetch to download the entire module
+// And then instantiate the module
+const fetchAndInstantiateTask = async () => {
+const wasmArrayBuffer = await fetch(wasmModuleUrl).then(response =>
+  response.arrayBuffer()
+);
+return WebAssembly.instantiate(wasmArrayBuffer, importObject);
+};
+response = await fetchAndInstantiateTask();
+}
+
+return response;
+};
+
+let fib = undefined;
+let randn = undefined;
+const runWasmAdd = async () => {
+// Instantiate our wasm module
+const wasmModule = await wasmBrowserInstantiate("/build/untouched.wasm");
+
+// Call the Add function export from wasm, save the result
+// const addResult = wasmModule.instance.exports.fib(24);
+fib = wasmModule.instance.exports.fib;
+normal = wasmModule.instance.exports.normal;
+var pointSize = 3; // Change according to the size of the point.
+var ctx = document.getElementById("canvas").getContext("2d");
+ctx.fillStyle = "#ff2626"; // Red color
+let N = 2000;
+for (var i=0 ; i < N; i++) {
+  ctx.beginPath(); //Start path
+  let x = i*(690.0/N);
+  let y = normal()*325 + 325;
+  console.log(`x = ${x}, y = ${y}`);
+  ctx.rect(x, y, 1, 1); // Draw a point using the arc function of the canvas with a point structure.
+  ctx.stroke(); // Close the path and fill.
+}
+
+console.log(wasmModule.instance.exports.normal());
+};
+runWasmAdd();
+  </script>
+<body>
+  <canvas id="canvas" width="690" height="651"></canvas>
+</body>
+</html>
